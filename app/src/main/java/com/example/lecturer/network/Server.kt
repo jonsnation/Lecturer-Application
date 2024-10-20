@@ -13,6 +13,7 @@ import java.net.Socket
 import java.security.SecureRandom
 import kotlin.concurrent.thread
 
+@RequiresApi(Build.VERSION_CODES.O)
 class Server(private val iFaceImpl: NetworkMessageInterface) {
     companion object {
         const val PORT: Int = 9999
@@ -21,7 +22,7 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
     private val svrSocket: ServerSocket = ServerSocket(PORT, 0, InetAddress.getByName("192.168.49.1"))
     private val clientMap: HashMap<String, Socket> = HashMap()
     private val encryptionDecryption = EncryptionDecryption()
-    private val classStudentIds = generateStudentIds()
+    private val classStudentIds = getHardCodedStudentIds()
     private val authorizedList: MutableList<String> = mutableListOf()
     private val challengeList: MutableMap<String, String> = mutableMapOf()
 
@@ -38,22 +39,27 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
         }
     }
 
-    private fun generateStudentIds(): List<String> {
-        val studentIds = mutableSetOf("816117992")
-        val random = SecureRandom()
-        while (studentIds.size < 49) {
-            val id = "816" + (random.nextInt(1000000)).toString().padStart(6, '0')
-            studentIds.add(id)
-        }
-        return studentIds.toList()
+    private fun getHardCodedStudentIds(): List<String> {
+        return listOf(
+            "816117992", "816117993", "816117994", "816117995", "816117996",
+            "816117997", "816117998", "816117999", "816118000", "816118001",
+            "816118002", "816118003", "816118004", "816118005", "816118006",
+            "816118007", "816118008", "816118009", "816118010", "816118011",
+            "816118012", "816118013", "816118014", "816118015", "816118016",
+            "816118017", "816118018", "816118019", "816118020", "816118021",
+            "816118022", "816118023", "816118024", "816118025", "816118026",
+            "816118027", "816118028", "816118029", "816118030", "816118031",
+            "816118032", "816118033", "816118034", "816118035", "816118036",
+            "816118037", "816118038", "816118039", "816118040", "816035483"
+        )
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun handleSocket(socket: Socket) {
-        val reader = socket.inputStream.bufferedReader()
-        val writer = socket.outputStream.bufferedWriter()
-
         thread {
+            val reader = socket.inputStream.bufferedReader()
+            val writer = socket.outputStream.bufferedWriter()
+
             try {
                 while (socket.isConnected) {
                     val message = reader.readLine() ?: break
@@ -87,8 +93,17 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
         val randomR = challengeList["pending"]
         val encryptedMessage = content.message
 
+        Log.d("SERVER", "Verifying challenge for message: $encryptedMessage with nonce: $randomR")
+
+        if (randomR == null || encryptedMessage == null) {
+            Log.e("SERVER", "Challenge or encrypted message is null")
+            socket.close()
+            return
+        }
+
         for (studentId in classStudentIds) {
             val decryptedMessage = decryptMessageWithID(encryptedMessage, studentId)
+            Log.d("SERVER", "Decrypted message with student ID $studentId: $decryptedMessage")
             if (randomR == decryptedMessage) {
                 authorizeStudent(studentId, socket)
                 return
@@ -100,11 +115,19 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    private fun decryptMessageWithID(encryptedMessage: String, studentId: String): String {
-        val hashedID = encryptionDecryption.hashStrSha256(studentId)
-        val aesKey = encryptionDecryption.generateAESKey(hashedID)
-        val aesIV = encryptionDecryption.generateIV(hashedID)
-        return encryptionDecryption.decryptMessage(encryptedMessage, aesKey, aesIV)
+    private fun decryptMessageWithID(encryptedMessage: String, studentId: String): String? {
+        return try {
+            val hashedID = encryptionDecryption.hashStrSha256(studentId)
+            val aesKey = encryptionDecryption.generateAESKey(hashedID)
+            val aesIV = encryptionDecryption.generateIV(hashedID)
+            Log.d("SERVER", "Decrypting with key: ${aesKey.encoded.joinToString("") { "%02x".format(it) }} and IV: ${aesIV.iv.joinToString("") { "%02x".format(it) }}")
+            val decryptedMessage = encryptionDecryption.decryptMessage(encryptedMessage, aesKey, aesIV)
+            Log.d("SERVER", "Decrypted message: $decryptedMessage")
+            decryptedMessage
+        } catch (e: Exception) {
+            Log.e("SERVER", "Error decrypting message: ${e.message}")
+            null
+        }
     }
 
     private fun authorizeStudent(studentId: String, socket: Socket) {
@@ -128,10 +151,16 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
     }
 
     private fun sendMessage(writer: BufferedWriter, content: ContentModel) {
-        val contentStr = Gson().toJson(content)
-        writer.write("$contentStr\n")
-        writer.flush()
-        Log.d("SERVER", "Sent message: $contentStr")
+        thread {
+            try {
+                val contentStr = Gson().toJson(content)
+                writer.write("$contentStr\n")
+                writer.flush()
+                Log.d("SERVER", "Sent message: $contentStr")
+            } catch (e: Exception) {
+                Log.e("SERVER", "Error sending message: ${e.message}")
+            }
+        }
     }
 
     private fun cleanUp(socket: Socket) {
@@ -162,15 +191,21 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
     }
 
     fun sendMessageToStudent(studentId: String, content: ContentModel) {
-        val socket = clientMap[studentId]
-        if (socket != null) {
-            val writer = socket.outputStream.bufferedWriter()
-            val contentAsStr = Gson().toJson(content)
-            writer.write("$contentAsStr\n")
-            writer.flush()
-            Log.d("SERVER", "Sent message to student $studentId: $contentAsStr")
-        } else {
-            Log.e("SERVER", "No active connection found for student $studentId")
+        thread {
+            try {
+                val socket = clientMap[studentId]
+                if (socket != null) {
+                    val writer = socket.outputStream.bufferedWriter()
+                    val contentAsStr = Gson().toJson(content)
+                    writer.write("$contentAsStr\n")
+                    writer.flush()
+                    Log.d("SERVER", "Sent message to student $studentId: $contentAsStr")
+                } else {
+                    Log.e("SERVER", "No active connection found for student $studentId")
+                }
+            } catch (e: Exception) {
+                Log.e("SERVER", "Error sending message to student $studentId: ${e.message}")
+            }
         }
     }
 }
