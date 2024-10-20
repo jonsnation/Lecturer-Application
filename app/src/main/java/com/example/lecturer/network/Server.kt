@@ -13,6 +13,7 @@ import java.net.Socket
 import java.security.SecureRandom
 import kotlin.concurrent.thread
 
+@RequiresApi(Build.VERSION_CODES.O)
 class Server(private val iFaceImpl: NetworkMessageInterface) {
     companion object {
         const val PORT: Int = 9999
@@ -50,10 +51,10 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun handleSocket(socket: Socket) {
-        val reader = socket.inputStream.bufferedReader()
-        val writer = socket.outputStream.bufferedWriter()
-
         thread {
+            val reader = socket.inputStream.bufferedReader()
+            val writer = socket.outputStream.bufferedWriter()
+
             try {
                 while (socket.isConnected) {
                     val message = reader.readLine() ?: break
@@ -128,10 +129,16 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
     }
 
     private fun sendMessage(writer: BufferedWriter, content: ContentModel) {
-        val contentStr = Gson().toJson(content)
-        writer.write("$contentStr\n")
-        writer.flush()
-        Log.d("SERVER", "Sent message: $contentStr")
+        thread {
+            try {
+                val contentStr = Gson().toJson(content)
+                writer.write("$contentStr\n")
+                writer.flush()
+                Log.d("SERVER", "Sent message: $contentStr")
+            } catch (e: Exception) {
+                Log.e("SERVER", "Error sending message: ${e.message}")
+            }
+        }
     }
 
     private fun cleanUp(socket: Socket) {
@@ -162,15 +169,21 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
     }
 
     fun sendMessageToStudent(studentId: String, content: ContentModel) {
-        val socket = clientMap[studentId]
-        if (socket != null) {
-            val writer = socket.outputStream.bufferedWriter()
-            val contentAsStr = Gson().toJson(content)
-            writer.write("$contentAsStr\n")
-            writer.flush()
-            Log.d("SERVER", "Sent message to student $studentId: $contentAsStr")
-        } else {
-            Log.e("SERVER", "No active connection found for student $studentId")
+        thread {
+            try {
+                val socket = clientMap[studentId]
+                if (socket != null) {
+                    val writer = socket.outputStream.bufferedWriter()
+                    val contentAsStr = Gson().toJson(content)
+                    writer.write("$contentAsStr\n")
+                    writer.flush()
+                    Log.d("SERVER", "Sent message to student $studentId: $contentAsStr")
+                } else {
+                    Log.e("SERVER", "No active connection found for student $studentId")
+                }
+            } catch (e: Exception) {
+                Log.e("SERVER", "Error sending message to student $studentId: ${e.message}")
+            }
         }
     }
 }
