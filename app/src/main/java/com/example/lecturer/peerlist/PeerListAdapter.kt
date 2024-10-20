@@ -2,6 +2,7 @@ package com.example.lecturer.peerlist
 
 import android.annotation.SuppressLint
 import android.net.wifi.p2p.WifiP2pDevice
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,13 +10,12 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.lecturer.R
 
-class PeerListAdapter(private val iFaceImpl:PeerListAdapterInterface): RecyclerView.Adapter<PeerListAdapter.ViewHolder>() {
+class PeerListAdapter(private val iFaceImpl: PeerListAdapterInterface): RecyclerView.Adapter<PeerListAdapter.ViewHolder>() {
     private val peersList:MutableList<WifiP2pDevice> = mutableListOf()
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val titleTextView: TextView = itemView.findViewById(R.id.titleTextView)
         val descriptionTextView: TextView = itemView.findViewById(R.id.descriptionTextView)
-        val askQuestionButton: TextView = itemView.findViewById(R.id.btnAskQuestion)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -28,15 +28,11 @@ class PeerListAdapter(private val iFaceImpl:PeerListAdapterInterface): RecyclerV
 
         holder.titleTextView.text = peer.deviceName
         holder.descriptionTextView.text = peer.deviceAddress
-        holder.askQuestionButton.setOnClickListener {
-            iFaceImpl.onPeerClicked(peer)
-        }
 
         holder.itemView.setOnClickListener {
             iFaceImpl.onPeerClicked(peer)
         }
     }
-
 
     override fun getItemCount(): Int {
         return peersList.size
@@ -48,11 +44,4 @@ class PeerListAdapter(private val iFaceImpl:PeerListAdapterInterface): RecyclerV
         peersList.addAll(newPeersList)
         notifyDataSetChanged()
     }
-
-    // In PeerListAdapter
-    fun getDeviceByIp(ip: String): WifiP2pDevice? {
-        return peersList.find { it.deviceAddress == ip }
-    }
-
-
 }

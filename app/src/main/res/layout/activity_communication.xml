@@ -6,6 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".CommunicationActivity">
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/clWfdAdapterDisabled"
         android:padding="32dp"
@@ -28,7 +29,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -39,7 +39,6 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/tvWfdError" />
-
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -75,10 +74,9 @@
             android:text="Start Class"
             app:layout_constraintHorizontal_chainStyle="packed"
             app:layout_constraintVertical_chainStyle="packed"
-            app:layout_constraintEnd_toStartOf="@+id/btnDiscover"
             app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/tvWfdDisconnected" />
-
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -133,7 +131,6 @@
 
         </LinearLayout>
 
-
         <TextView
             android:id="@+id/tvNetworkSSID"
             android:layout_width="wrap_content"
@@ -164,9 +161,12 @@
             android:id="@+id/rvPeerListing"
             android:layout_width="361dp"
             android:layout_height="176dp"
+            android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintVertical_bias="0.242"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
             tools:layout_editor_absoluteX="0dp" />
 
         <Button
@@ -191,6 +191,8 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintVertical_bias="0.141"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
             tools:layout_editor_absoluteX="1dp" />
 
         <TextView
@@ -201,7 +203,34 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintVertical_bias="0.469"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
             tools:layout_editor_absoluteX="-3dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvStudentListing"
+            android:layout_width="360dp"
+            android:layout_height="195dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.229" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/clChatInterface"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <!-- Add any child views for the chat interface here -->
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
