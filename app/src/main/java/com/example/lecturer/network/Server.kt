@@ -55,10 +55,12 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
                 while (socket.isConnected) {
                     val message = reader.readLine() ?: break
                     val content = Gson().fromJson(message, ContentModel::class.java)
-                    val studentId = content.studentId
 
-                    if (studentId != null) {
-                        handleStudentConnection(socket, content, writer, studentId)
+                    if (content.message == "I am here") {
+                        Log.d("SERVER", "Received message from client: $message")
+                        initiateChallenge(writer)
+                    } else {
+                        verifyChallenge(content, socket)
                     }
                 }
             } catch (e: Exception) {
@@ -69,71 +71,29 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
         }
     }
 
-    private fun handleStudentConnection(socket: Socket, content: ContentModel, writer: BufferedWriter, studentId: String) {
-        if (!isValidStudent(studentId)) {
-            Log.e("SERVER", "Student $studentId is not part of the class")
-            removeClient(studentId)
-            return
-        }
-
-        when {
-            isChallengeInitiation(content, studentId) -> {
-                Log.d("SERVER", "Initiating challenge for student $studentId")
-                initiateChallenge(writer, studentId)
-            }
-            isChallengeResponse(content, studentId) -> {
-                Log.d("SERVER", "Verifying challenge response from student $studentId")
-                verifyChallenge(content, studentId, socket)
-            }
-            isLeavingRequest(content, studentId) -> {
-                Log.d("SERVER", "Student $studentId has requested to leave")
-                handleLeavingRequest(writer, studentId)
-            }
-            else -> {
-                Log.d("SERVER", "Processing message from student $studentId")
-                processStudentMessage(content, studentId)
-            }
-        }
-    }
-
-    private fun isValidStudent(studentId: String): Boolean {
-        return classStudentIds.contains(studentId)
-    }
-
-    private fun isChallengeInitiation(content: ContentModel, studentId: String): Boolean {
-        return content.message == "I am here" && !authorizedList.contains(studentId)
-    }
-
-    private fun isChallengeResponse(content: ContentModel, studentId: String): Boolean {
-        return challengeList[studentId] != null
-    }
-
-    private fun isLeavingRequest(content: ContentModel, studentId: String): Boolean {
-        return content.message == "leaving" && authorizedList.contains(studentId)
-    }
-
-    private fun initiateChallenge(writer: BufferedWriter, studentId: String) {
+    private fun initiateChallenge(writer: BufferedWriter) {
         val randomR = generateNonce()
-        challengeList[studentId] = randomR
-        sendMessage(writer, ContentModel(randomR, "192.168.49.1", studentId))
-        Log.d("SERVER", "Started challenge for student $studentId with nonce $randomR")
+        challengeList["pending"] = randomR
+        sendMessage(writer, ContentModel(randomR, "192.168.49.1", null))
+        Log.d("SERVER", "Started challenge with nonce $randomR")
     }
 
-    private fun verifyChallenge(content: ContentModel, studentId: String, socket: Socket) {
-        val randomR = challengeList[studentId]
+    private fun verifyChallenge(content: ContentModel, socket: Socket) {
+        val randomR = challengeList["pending"]
         val encryptedMessage = content.message
-        Log.d("SERVER", "Received encrypted response from student $studentId: $encryptedMessage")
-        val decryptedMessage = decryptMessageWithID(encryptedMessage, studentId)
+        Log.d("SERVER", "Received encrypted response: $encryptedMessage")
 
-        Log.d("SERVER", "Decrypted message from student $studentId: $decryptedMessage")
-
-        if (randomR == decryptedMessage) {
-            authorizeStudent(studentId, socket)
-            Log.d("SERVER", "Student $studentId authenticated successfully")
-        } else {
-            Log.e("SERVER", "Failed to authenticate student $studentId")
-            removeClient(studentId)
+        for (studentId in classStudentIds) {
+            val decryptedMessage = decryptMessageWithID(encryptedMessage, studentId)
+            if (randomR == decryptedMessage) {
+                authorizeStudent(studentId, socket)
+                Log.d("SERVER", "Student $studentId authenticated successfully")
+                return
+            }
         }
+
+        Log.e("SERVER", "Failed to authenticate student")
+        socket.close()
     }
 
     private fun decryptMessageWithID(encryptedMessage: String, studentId: String): String {
@@ -147,29 +107,13 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
         authorizedList.add(studentId)
         clientMap[studentId] = socket
         Log.d("SERVER", "Authorized student $studentId and added to client map")
-
-        // Update the student list and notify the interface
         updateStudentList()
     }
 
     private fun updateStudentList() {
-        // Update the student list and notify the UI
-        val updatedStudentList = authorizedList.toList() // Convert to immutable list if necessary
+        val updatedStudentList = authorizedList.toList()
         iFaceImpl.onStudentListUpdated(updatedStudentList)
         Log.d("SERVER", "Updated student list: $updatedStudentList")
-    }
-
-    private fun handleLeavingRequest(writer: BufferedWriter, studentId: String) {
-        sendMessage(writer, ContentModel("leaving", "192.168.49.1", studentId))
-        removeClient(studentId)
-        Log.d("SERVER", "Student $studentId has left and was removed")
-    }
-
-    private fun processStudentMessage(content: ContentModel, studentId: String) {
-        clientMap[studentId]?.let {
-            iFaceImpl.onContent(content)
-            Log.d("SERVER", "Received message from student $studentId: ${content.message}")
-        }
     }
 
     private fun sendMessage(writer: BufferedWriter, content: ContentModel) {
@@ -194,6 +138,19 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
         return nonce.joinToString("") { "%02x".format(it) }
     }
 
+    private fun getStudentIdFromSocket(socket: Socket): String? {
+        return clientMap.entries.find { it.value == socket }?.key
+    }
+
+    fun close() {
+        svrSocket.close()
+        clientMap.clear()
+        challengeList.clear()
+        authorizedList.clear()
+        Log.d("SERVER", "Server closed and all data cleared")
+    }
+
+    // Add the sendMessageToStudent function
     fun sendMessageToStudent(studentId: String, content: ContentModel) {
         val socket = clientMap[studentId]
         if (socket != null) {
@@ -205,25 +162,5 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
         } else {
             Log.e("SERVER", "No active connection found for student $studentId")
         }
-    }
-
-    private fun removeClient(studentId: String) {
-        val socket = clientMap[studentId]
-        socket?.close()
-        clientMap.remove(studentId)
-        challengeList.remove(studentId)
-        Log.d("SERVER", "Removed client with student ID $studentId")
-    }
-
-    private fun getStudentIdFromSocket(socket: Socket): String? {
-        return clientMap.entries.find { it.value == socket }?.key
-    }
-
-    fun close() {
-        svrSocket.close()
-        clientMap.clear()
-        challengeList.clear()
-        authorizedList.clear()
-        Log.d("SERVER", "Server closed and all data cleared")
     }
 }
