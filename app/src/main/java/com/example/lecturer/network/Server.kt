@@ -57,7 +57,6 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
                     val content = Gson().fromJson(message, ContentModel::class.java)
 
                     if (content.message == "I am here") {
-                        Log.d("SERVER", "Received message from client: $message")
                         initiateChallenge(writer)
                     } else {
                         verifyChallenge(content, socket)
