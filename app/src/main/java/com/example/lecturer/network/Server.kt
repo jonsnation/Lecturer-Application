@@ -58,8 +58,10 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
 
                     if (content.message == "I am here") {
                         initiateChallenge(writer)
-                    } else {
+                    } else if (content.studentId == null) {
                         verifyChallenge(content, socket)
+                    } else {
+                        processStudentMessage(content)
                     }
                 }
             } catch (e: Exception) {
@@ -115,6 +117,13 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
         Log.d("SERVER", "Updated student list: $updatedStudentList")
     }
 
+    private fun processStudentMessage(content: ContentModel) {
+        val recipientId = content.studentId
+        if (recipientId != null) {
+            sendMessageToStudent(recipientId, content)
+        }
+    }
+
     private fun sendMessage(writer: BufferedWriter, content: ContentModel) {
         val contentStr = Gson().toJson(content)
         writer.write("$contentStr\n")
@@ -149,7 +158,6 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
         Log.d("SERVER", "Server closed and all data cleared")
     }
 
-    // Add the sendMessageToStudent function
     fun sendMessageToStudent(studentId: String, content: ContentModel) {
         val socket = clientMap[studentId]
         if (socket != null) {
