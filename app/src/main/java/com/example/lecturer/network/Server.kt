@@ -1,6 +1,8 @@
 package com.example.lecturer.network
 
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import com.example.lecturer.encryption.EncryptionDecryption
 import com.example.lecturer.models.ContentModel
 import com.google.gson.Gson
@@ -46,6 +48,7 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
         return studentIds.toList()
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun handleSocket(socket: Socket) {
         val reader = socket.inputStream.bufferedReader()
         val writer = socket.outputStream.bufferedWriter()
@@ -79,16 +82,15 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
         Log.d("SERVER", "Started challenge with nonce $randomR")
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun verifyChallenge(content: ContentModel, socket: Socket) {
         val randomR = challengeList["pending"]
         val encryptedMessage = content.message
-        Log.d("SERVER", "Received encrypted response: $encryptedMessage")
 
         for (studentId in classStudentIds) {
             val decryptedMessage = decryptMessageWithID(encryptedMessage, studentId)
             if (randomR == decryptedMessage) {
                 authorizeStudent(studentId, socket)
-                Log.d("SERVER", "Student $studentId authenticated successfully")
                 return
             }
         }
@@ -97,6 +99,7 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
         socket.close()
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun decryptMessageWithID(encryptedMessage: String, studentId: String): String {
         val hashedID = encryptionDecryption.hashStrSha256(studentId)
         val aesKey = encryptionDecryption.generateAESKey(hashedID)

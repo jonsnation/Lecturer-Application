@@ -55,7 +55,6 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
     private var selectedStudent: String? = null
     private var studentListAdapter: StudentAdapter? = null
 
-
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -88,6 +87,7 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
 
         wfdManager?.disconnect()
     }
+
     override fun onResume() {
         super.onResume()
         wfdManager?.also {
@@ -170,8 +170,6 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
         }.start()
     }
 
-
-
     override fun onWiFiDirectStateChanged(isEnabled: Boolean) {
         wfdAdapterEnabled = isEnabled
         val text = if (isEnabled) {
@@ -200,7 +198,6 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
             updateUI()
         }
     }
-
 
     override fun onGroupStatusChanged(groupInfo: WifiP2pGroup?) {
         val text = if (groupInfo == null) {
@@ -246,8 +243,6 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
 
         val studentChatTitle: TextView = findViewById(R.id.tvStudentID)
         studentChatTitle.text = "Student Chat - $studentId"
-
-
     }
 
     override fun onContent(content: ContentModel) {
@@ -256,10 +251,7 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
         }
     }
 
-
     override fun onPeerClicked(peer: WifiP2pDevice) {
         // Handle peer click
     }
-
-
 }
